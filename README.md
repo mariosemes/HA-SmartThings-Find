@@ -1,6 +1,3 @@
-# ⚠️ Repository archived! ⚠️
-Unfortunately, I no longer have the time to maintain this repository. I underestimated how much work it would be. Additionally, my focus recently has shifted away from HA (and programming in general) towards other things. I sincerely hope someone else can take over and build a solid, reliable integration from what's already here.
-
 # SmartThings Find Integration for Home Assistant
 
 This integration adds support for devices from Samsung SmartThings Find. While intended mainly for Samsung SmartTags, it also works with other devices, such as phones, tablets, watches and earbuds.
@@ -22,18 +19,24 @@ This integration does **not** allow you to perform actions based on button press
 - **Feature Constraints**: The integration can only support features available on the [SmartThings Find website](https://smartthingsfind.samsung.com/). For instance, stopping a SmartTag from ringing is not possible due to API limitations (while other devices do support this; not yet implemented)
 
 ## Notes on authentication
-The integration simulates Samsung login using QR code. It stores the retrieved JSESSIONID-Cookie and uses it for further requests. **It is not yet known, how long exactly the session is valid!** While it did work at least for several weeks for me and others, there's no definite answer and the session might become invalid anytime! As a precaution I implemented a reauth-flow: In case the session expires, Home Assistant will inform you and you can easily repeat the QR code login process.
+
+The integration uses Samsung's OAuth2 login flow. After you sign in through a browser, you copy a single cookie value (`JSESSIONID`) from browser DevTools and paste it into Home Assistant. This is a one-time setup step.
+
+The integration stores the time the session was created, so you can track how long a session stays valid (**Settings → Devices & Services → SmartThings Find → Download Diagnostics**). Community experience suggests sessions last **at least several weeks**, but the exact lifetime is not officially documented by Samsung.
+
+As a precaution, a **re-auth flow** is implemented: if the session expires, Home Assistant will show a persistent notification. Clicking it lets you paste a fresh `JSESSIONID` without reinstalling or reconfiguring anything — the process takes less than a minute.
 
 ## Notes on connection to the devices
-Being able to let a SmartTag ring depends on a phone/tablet nearby which forwards your request via Bluetooth. If your phone is not near your tag, you can't make it ring. The location should still update if any Galaxy device is nearby. 
 
-If ringing your tag does not work, first try to let it ring from the [SmartThings Find website](https://smartthingsfind.samsung.com/). If it does not work from there, it can not work from Home Assistant too! Note that letting it ring with the SmartThings Mobile App is not the same as the website. Just because it does work in the App, does not mean it works on the web. So always use the web version to do your tests.
+Being able to let a SmartTag ring depends on a phone/tablet nearby which forwards your request via Bluetooth. If your phone is not near your tag, you can't make it ring. The location should still update if any Galaxy device is nearby.
+
+If ringing your tag does not work, first try to let it ring from the [SmartThings Find website](https://smartthingsfind.samsung.com/). If it does not work from there, it cannot work from Home Assistant either! Note that the SmartThings Mobile App uses a different backend than the website — just because ringing works in the app does not mean it works on the web. Always use the web version to test.
 
 ## Notes on active/passive mode
 
-Starting with version 0.2.0, it is possible to configure whether to use the integration in an active or passive mode. In passive mode the integration only fetches the location from the server which was last reported to STF. In active mode the integration sends an actual "request location update" request. This will make the STF server try to connect to e.g. your phone, get the current location and send it back to the STF server from where the integration can then read it. This has quite a big impact on the devices battery and in some cases might also wake up the screen of the phone or tablet.
+It is possible to configure whether to use the integration in **active** or **passive** mode. In passive mode the integration only fetches the last location that was already reported to STF. In active mode the integration sends a "request location update" command, causing the STF server to try to contact your device and push a fresh location. This has a bigger impact on battery and may occasionally wake up the screen of a phone or tablet.
 
-By default active mode is enabled for SmartTags but disabled for any other devices. You can change this behaviour on the integrations page by clicking on `Configure`. Here you can also set the update interval, which is set to 120 seconds by default.
+By default, active mode is **enabled for SmartTags** and **disabled for all other devices**. You can change this on the integrations page by clicking `Configure`. The update interval (default: 120 seconds) can also be changed there.
 
 
 ## Installation Instructions
@@ -60,18 +63,27 @@ By default active mode is enabled for SmartTags but disabled for any other devic
 
 1. Go to the Integrations page
 2. Search for "SmartThings *Find*" (**do not confuse with the built-in SmartThings integration!**)
-3. To login, scan the QR Code shown in the config flow or follow the shown link.
-4. Wait a few seconds, and the integration should be ready.
+3. Click the login link shown in the setup form — it will open Samsung's login page in your browser
+4. Sign in with your Samsung account
+5. Once redirected to SmartThings Find, press **F12** to open DevTools
+6. Go to **Application → Cookies → https://smartthingsfind.samsung.com**
+7. Copy the value of the **JSESSIONID** cookie and paste it into the setup form
+8. The integration will validate the session and complete setup
 
 ## Debugging
 
-To enable debugging, you need to set the log level in `configuration.yaml`:
+To enable debug logging, add the following to `configuration.yaml`:
 
 ```yaml
 logger:
   default: info
   logs:
     custom_components.smartthings_find: debug
+```
+
+The log will include the session age on every startup, e.g.:
+```
+Session age: 12d 3h (authenticated at 2026-02-13 08:51 UTC)
 ```
 
 ## License
@@ -89,9 +101,10 @@ For support, please create an issue on the GitHub repository.
 ## Roadmap
 
 - ~~HACS support~~ ✅
+- ~~Allow adding two instances of this integration (two Samsung Accounts)~~ ✅
+- ~~Session age tracking via diagnostics~~ ✅
 - Service to let a device ring
 - Service to make a device stop ringing (for devices that support this feature)
-- ~~Allow adding two instances of this integration (two Samsung Accounts)~~ ✅
 
 ## Disclaimer
 

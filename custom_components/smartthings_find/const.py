@@ -1,6 +1,7 @@
 DOMAIN = "smartthings_find"
 
 CONF_JSESSIONID = "jsessionid"
+CONF_SESSION_CREATED_AT = "session_created_at"
 
 CONF_ACTIVE_MODE_SMARTTAGS = "active_mode_smarttags"
 CONF_ACTIVE_MODE_OTHERS = "active_mode_others"

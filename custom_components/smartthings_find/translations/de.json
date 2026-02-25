@@ -3,9 +3,18 @@
     "abort": {
       "reauth_successful": "Erfolgreich authentifiziert."
     },
-    "progress": {
-      "task_stage_one": "Vorbereitung läuft, bitte warten...",
-      "task_stage_two": "Bitte scanne den QR Code mit deinem Galaxy-Gerät, um dich anzumelden. Alternativ kannst du dich direkt im Browser anmelden, indum du [hier]({url}) klickst. \n\n![QR Code](data:image/png;base64,{qr_code})\n\nCode kann nicht gescannt werden? Gehe auf [signin.samsung.com/key](https://signin.samsung.com/key/) und gib den folgenden Code ein:\n\n## ```{code}```\n"
+    "step": {
+      "user": {
+        "title": "SmartThings Find - Anmeldung",
+        "description": "## Anmeldeschritte\n\n1. Klicke [hier]({login_url}), um die Samsung-Anmeldeseite zu öffnen\n2. Melde dich mit deinem Samsung-Konto an\n3. Sobald du zu SmartThings Find weitergeleitet wirst, drücke **F12** um die Entwicklertools zu öffnen\n4. Gehe zu **Anwendung → Cookies → https://smartthingsfind.samsung.com**\n5. Kopiere den Wert des **JSESSIONID**-Cookies und füge ihn unten ein",
+        "data": {
+          "jsessionid": "JSESSIONID Cookie-Wert"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Die JSESSIONID ist ungültig oder abgelaufen. Bitte melde dich erneut an und füge einen neuen Wert ein.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Prüfe die Logs für Details."
     }
   },
   "options": {

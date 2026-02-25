@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 import logging
 import aiohttp
 from homeassistant.core import HomeAssistant
@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from .const import (
     DOMAIN,
     CONF_JSESSIONID,
+    CONF_SESSION_CREATED_AT,
     CONF_ACTIVE_MODE_OTHERS,
     CONF_ACTIVE_MODE_OTHERS_DEFAULT,
     CONF_ACTIVE_MODE_SMARTTAGS,
@@ -52,6 +53,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # This raises ConfigEntryAuthFailed-exception if failed. So if we
     # can continue after fetch_csrf, we know that authentication was ok
     await fetch_csrf(hass, session, entry.entry_id)
+
+    # Log session age so we can empirically learn how long JSESSIONID stays valid
+    session_created_at = entry.data.get(CONF_SESSION_CREATED_AT)
+    if session_created_at:
+        created = datetime.fromisoformat(session_created_at)
+        age = datetime.now(timezone.utc) - created
+        _LOGGER.info(
+            f"Session age: {age.days}d {age.seconds // 3600}h "
+            f"(authenticated at {created.strftime('%Y-%m-%d %H:%M UTC')})"
+        )
+    else:
+        _LOGGER.info("Session age unknown (no timestamp stored yet)")
     
     # Load all SmartThings-Find devices from the users account
     devices = await get_devices(hass, session, entry.entry_id)
@@ -87,6 +100,39 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     else:
         _LOGGER.error(f"Unload failed: {unload_success}")
     return unload_success
+
+
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
+    """Return diagnostics for a config entry (Settings → Devices & Services → Download Diagnostics)."""
+    session_created_at = entry.data.get(CONF_SESSION_CREATED_AT)
+    session_age = None
+    if session_created_at:
+        created = datetime.fromisoformat(session_created_at)
+        age = datetime.now(timezone.utc) - created
+        session_age = f"{age.days}d {age.seconds // 3600}h"
+
+    coordinator: SmartThingsFindCoordinator = (
+        hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get("coordinator")
+    )
+
+    return {
+        "session": {
+            "authenticated_at": session_created_at,
+            "session_age": session_age,
+        },
+        "devices": [
+            {
+                "name": d["data"].get("modelName"),
+                "id": d["data"].get("dvceID"),
+                "type": d["data"].get("deviceTypeCode"),
+                "model": d["data"].get("modelID"),
+            }
+            for d in hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get("devices", [])
+        ],
+        "last_coordinator_update": (
+            coordinator.last_update_success if coordinator else None
+        ),
+    }
 
 
 class SmartThingsFindCoordinator(DataUpdateCoordinator):

@@ -3,9 +3,18 @@
     "abort": {
       "reauth_successful": "Reauthentication successful."
     },
-    "progress": {
-      "task_stage_one": "Preparing, please wait...",
-      "task_stage_two": "To login please scan the following QR Code with your Galaxy device. You can also login using this browser by clicking [here]({url}). \n\n![QR Code](data:image/png;base64,{qr_code})\n\nUnable to scan the code? Go to [signin.samsung.com/key](https://signin.samsung.com/key/) and enter the following code:\n\n## ```{code}```\n"
+    "step": {
+      "user": {
+        "title": "SmartThings Find - Login",
+        "description": "## Login Steps\n\n1. Click [here]({login_url}) to open the Samsung login page\n2. Sign in with your Samsung account\n3. Once redirected to SmartThings Find, press **F12** to open DevTools\n4. Go to **Application → Cookies → https://smartthingsfind.samsung.com**\n5. Copy the value of the **JSESSIONID** cookie and paste it below",
+        "data": {
+          "jsessionid": "JSESSIONID cookie value"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "The JSESSIONID is invalid or has expired. Please log in again and paste a fresh value.",
+      "unknown": "An unexpected error occurred. Check the logs for details."
     }
   },
   "options": {
