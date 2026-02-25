@@ -5,7 +5,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import Platform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.config_entries import ConfigEntry
 
@@ -20,7 +19,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_UPDATE_INTERVAL_DEFAULT
 )
-from .utils import fetch_csrf, get_devices, get_device_location
+from .utils import fetch_csrf, get_devices, get_device_location, create_stf_session
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,11 +35,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     hass.data[DOMAIN][entry.entry_id] = {}
 
-    # Load the jsessionid from the config and create a session from it
+    # Load the jsessionid from the config and create a dedicated session for STF.
+    # We use our own session (not the shared HA session) so:
+    #   - the cookie jar is isolated from other integrations
+    #   - the JSESSIONID cookie is properly scoped to smartthingsfind.samsung.com
+    #   - a browser User-Agent is sent so Samsung doesn't reject requests as bots
     jsessionid = entry.data[CONF_JSESSIONID]
-
-    session = async_get_clientsession(hass)
-    session.cookie_jar.update_cookies({"JSESSIONID": jsessionid})
+    session = create_stf_session(jsessionid)
 
     active_smarttags = entry.options.get(CONF_ACTIVE_MODE_SMARTTAGS, CONF_ACTIVE_MODE_SMARTTAGS_DEFAULT)
     active_others = entry.options.get(CONF_ACTIVE_MODE_OTHERS, CONF_ACTIVE_MODE_OTHERS_DEFAULT)
@@ -96,7 +97,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_success = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_success:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        # Close the dedicated session we created for this entry
+        session: aiohttp.ClientSession = entry_data.get("session")
+        if session and not session.closed:
+            await session.close()
     else:
         _LOGGER.error(f"Unload failed: {unload_success}")
     return unload_success

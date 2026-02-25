@@ -7,7 +7,6 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlowWithConfigEntry
 )
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from .const import (
     DOMAIN,
@@ -20,7 +19,7 @@ from .const import (
     CONF_ACTIVE_MODE_OTHERS,
     CONF_ACTIVE_MODE_OTHERS_DEFAULT
 )
-from .utils import fetch_csrf, get_login_url
+from .utils import fetch_csrf, get_login_url, create_stf_session
 import logging
 from datetime import datetime, timezone
 
@@ -40,8 +39,7 @@ class SmartThingsFindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if DOMAIN not in self.hass.data:
             self.hass.data[DOMAIN] = {}
         self.hass.data[DOMAIN][temp_id] = {}
-        session = async_get_clientsession(self.hass)
-        session.cookie_jar.update_cookies({"JSESSIONID": jsessionid})
+        session = create_stf_session(jsessionid)
         try:
             await fetch_csrf(self.hass, session, temp_id)
             return True
@@ -49,6 +47,7 @@ class SmartThingsFindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return False
         finally:
             self.hass.data[DOMAIN].pop(temp_id, None)
+            await session.close()
 
     async def async_step_user(self, user_input=None):
         """Show login URL and JSESSIONID input form."""

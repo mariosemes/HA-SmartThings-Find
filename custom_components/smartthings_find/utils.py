@@ -7,7 +7,7 @@ import string
 import re
 import html
 from datetime import datetime
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from yarl import URL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -17,10 +17,44 @@ from .const import DOMAIN, BATTERY_LEVELS, CONF_ACTIVE_MODE_SMARTTAGS, CONF_ACTI
 
 _LOGGER = logging.getLogger(__name__)
 
-URL_GET_CSRF = "https://smartthingsfind.samsung.com/chkLogin.do"
-URL_DEVICE_LIST = "https://smartthingsfind.samsung.com/device/getDeviceList.do"
-URL_REQUEST_LOC_UPDATE = "https://smartthingsfind.samsung.com/dm/addOperation.do"
-URL_SET_LAST_DEVICE = "https://smartthingsfind.samsung.com/device/setLastSelect.do"
+# Browser User-Agent so Samsung's server doesn't reject requests as bots
+STF_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+STF_DOMAIN = "https://smartthingsfind.samsung.com"
+
+URL_GET_CSRF = f"{STF_DOMAIN}/chkLogin.do"
+URL_DEVICE_LIST = f"{STF_DOMAIN}/device/getDeviceList.do"
+URL_REQUEST_LOC_UPDATE = f"{STF_DOMAIN}/dm/addOperation.do"
+URL_SET_LAST_DEVICE = f"{STF_DOMAIN}/device/setLastSelect.do"
+
+
+def create_stf_session(jsessionid: str) -> aiohttp.ClientSession:
+    """
+    Create a dedicated aiohttp session for SmartThings Find.
+
+    Uses a separate CookieJar (not shared with other HA integrations) with the
+    JSESSIONID cookie properly scoped to smartthingsfind.samsung.com, and sets
+    a browser User-Agent so Samsung's server treats requests like a real browser.
+
+    Args:
+        jsessionid: The JSESSIONID cookie value from a logged-in STF browser session.
+
+    Returns:
+        aiohttp.ClientSession: A new session ready to use with the STF API.
+    """
+    cookie_jar = aiohttp.CookieJar(unsafe=True)
+    cookie_jar.update_cookies(
+        {"JSESSIONID": jsessionid},
+        response_url=URL(STF_DOMAIN)
+    )
+    return aiohttp.ClientSession(
+        cookie_jar=cookie_jar,
+        headers={"User-Agent": STF_USER_AGENT}
+    )
 
 def get_login_url() -> str:
     """
