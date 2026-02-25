@@ -1,3 +1,6 @@
+> **🍴 Fork Notice**
+> This is a maintained fork of the original [Vedeneb/HA-SmartThings-Find](https://github.com/Vedeneb/HA-SmartThings-Find) project, which has been archived by its author. A huge thank you to **Vedeneb** for the original concept, design, and all the hard work reverse-engineering the SmartThings Find API — this project would not exist without that foundation. This fork aims to keep the integration working and continue improving it.
+
 # SmartThings Find Integration for Home Assistant
 
 This integration adds support for devices from Samsung SmartThings Find. While intended mainly for Samsung SmartTags, it also works with other devices, such as phones, tablets, watches and earbuds.
