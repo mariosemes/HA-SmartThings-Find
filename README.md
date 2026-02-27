@@ -1,81 +1,110 @@
-> **🍴 Fork Notice**
-> This is a maintained fork of the original [Vedeneb/HA-SmartThings-Find](https://github.com/Vedeneb/HA-SmartThings-Find) project, which has been archived by its author. A huge thank you to **Vedeneb** for the original concept, design, and all the hard work reverse-engineering the SmartThings Find API — this project would not exist without that foundation. This fork aims to keep the integration working and continue improving it.
+# SmartThings Find — Home Assistant Integration
 
-# SmartThings Find Integration for Home Assistant
+<p align="center">
+  <img src="media/screenshot_1.png" alt="SmartThings Find in Home Assistant" width="600"/>
+</p>
 
-This integration adds support for devices from Samsung SmartThings Find. While intended mainly for Samsung SmartTags, it also works with other devices, such as phones, tablets, watches and earbuds.
+<p align="center">
+  <a href="https://github.com/mariosemes/HA-SmartThings-Find/releases"><img src="https://img.shields.io/badge/version-0.2.3-blue" alt="Version"></a>
+  <a href="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml"><img src="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml/badge.svg" alt="HACS Validation"></a>
+  <a href="https://github.com/mariosemes/HA-SmartThings-Find/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange" alt="HACS: Custom"></a>
+</p>
 
-Currently the integration creates three entities for each device:
-* `device_tracker`: Shows the location of the tag/device.
-* `sensor`: Represents the battery level of the tag/device (not supported for earbuds!)
-* `button`: Allows you to ring the tag/device.
+Track and manage your Samsung SmartTags and Samsung devices — phones, tablets, watches, and earbuds — directly from Home Assistant using the [SmartThings Find](https://smartthingsfind.samsung.com/) service.
 
-![screenshot](media/screenshot_1.png)
+> **🍴 Fork Notice** — This is a maintained fork of the original [Vedeneb/HA-SmartThings-Find](https://github.com/Vedeneb/HA-SmartThings-Find) project, which has been archived by its author. A huge thank you to **Vedeneb** for the original concept, the reverse-engineering work, and the solid foundation this project builds on.
 
-This integration does **not** allow you to perform actions based on button presses on the SmartTag! There are other ways to do that.
+---
 
+## Features
 
-## ⚠️ Warning/Disclaimer ⚠️
+For each registered Samsung device, the integration creates:
 
-- **API Limitations**: Created by reverse engineering the SmartThings Find API, this integration might stop working at any time if changes occur on the SmartThings side.
-- **Limited Testing**: The integration hasn't been thoroughly tested. If you encounter issues, please report them by creating an issue.
-- **Feature Constraints**: The integration can only support features available on the [SmartThings Find website](https://smartthingsfind.samsung.com/). For instance, stopping a SmartTag from ringing is not possible due to API limitations (while other devices do support this; not yet implemented)
+| Entity | Description |
+|--------|-------------|
+| `device_tracker` | GPS location with accuracy |
+| `sensor` | Battery level *(SmartTags only; not supported for earbuds)* |
+| `button` | Remotely ring the device |
 
-## Notes on authentication
+**Notes:**
+- Physical button presses on a SmartTag are **not** supported. Other integrations can handle that.
+- Stopping a ring is **not** yet implemented (the SmartThings Find website API has limited support for this).
 
-The integration uses Samsung's OAuth2 login flow. After you sign in through a browser, you copy a single cookie value (`JSESSIONID`) from browser DevTools and paste it into Home Assistant. This is a one-time setup step.
+---
 
-The integration stores the time the session was created, so you can track how long a session stays valid (**Settings → Devices & Services → SmartThings Find → Download Diagnostics**). Community experience suggests sessions last **at least several weeks**, but the exact lifetime is not officially documented by Samsung.
+## Installation
 
-As a precaution, a **re-auth flow** is implemented: if the session expires, Home Assistant will show a persistent notification. Clicking it lets you paste a fresh `JSESSIONID` without reinstalling or reconfiguring anything — the process takes less than a minute.
+### HACS (recommended)
 
-## Notes on connection to the devices
-
-Being able to let a SmartTag ring depends on a phone/tablet nearby which forwards your request via Bluetooth. If your phone is not near your tag, you can't make it ring. The location should still update if any Galaxy device is nearby.
-
-If ringing your tag does not work, first try to let it ring from the [SmartThings Find website](https://smartthingsfind.samsung.com/). If it does not work from there, it cannot work from Home Assistant either! Note that the SmartThings Mobile App uses a different backend than the website — just because ringing works in the app does not mean it works on the web. Always use the web version to test.
-
-## Notes on active/passive mode
-
-It is possible to configure whether to use the integration in **active** or **passive** mode. In passive mode the integration only fetches the last location that was already reported to STF. In active mode the integration sends a "request location update" command, causing the STF server to try to contact your device and push a fresh location. This has a bigger impact on battery and may occasionally wake up the screen of a phone or tablet.
-
-By default, active mode is **enabled for SmartTags** and **disabled for all other devices**. You can change this on the integrations page by clicking `Configure`. The update interval (default: 120 seconds) can also be changed there.
-
-
-## Installation Instructions
-
-### Using HACS
-
-1. Add this repository as a custom repository in HACS. Either by manually adding `https://github.com/mariosemes/HA-SmartThings-Find` with category `integration` or simply click the following button:
+Click the button below to add this repository directly to HACS, or manually add `https://github.com/mariosemes/HA-SmartThings-Find` as a custom integration repository.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mariosemes&repository=HA-SmartThings-Find&category=integration)
 
-2. Search for "SmartThings Find" in HACS and install the integration
-3. Restart Home Assistant
-4. Proceed to [Setup instructions](#setup-instructions)
-
-### Manual install
-
-1. Download the `custom_components/smartthings_find` directory to your Home Assistant configuration directory
+1. Search for **SmartThings Find** in HACS and install
 2. Restart Home Assistant
-3. Proceed to [Setup instructions](#setup-instructions)
+3. Follow the [Setup](#setup) steps below
 
-## Setup Instructions
+### Manual
+
+1. Copy the `custom_components/smartthings_find` directory into your HA configuration directory
+2. Restart Home Assistant
+3. Follow the [Setup](#setup) steps below
+
+---
+
+## Setup
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smartthings_find)
 
-1. Go to the Integrations page
-2. Search for "SmartThings *Find*" (**do not confuse with the built-in SmartThings integration!**)
-3. Click the login link shown in the setup form — it will open Samsung's login page in your browser
-4. Sign in with your Samsung account
-5. Once redirected to SmartThings Find, press **F12** to open DevTools
-6. Go to **Application → Cookies → https://smartthingsfind.samsung.com**
-7. Copy the value of the **JSESSIONID** cookie and paste it into the setup form
-8. The integration will validate the session and complete setup
+Or go to **Settings → Devices & Services → Add Integration** and search for **SmartThings Find** *(do not confuse with the built-in SmartThings integration)*.
+
+**Steps:**
+
+1. Click the login link shown in the setup form — Samsung's login page will open in your browser
+2. Sign in with your Samsung account
+3. Once redirected to SmartThings Find, press **F12** to open DevTools
+4. Go to **Application → Cookies → `https://smartthingsfind.samsung.com`**
+5. Copy the value of the **`JSESSIONID`** cookie and paste it into the setup form
+6. The integration validates the session and completes setup automatically
+
+---
+
+## Authentication & Session Lifetime
+
+The integration uses Samsung's OAuth2 login flow. The `JSESSIONID` cookie is a one-time setup step — no credentials are stored.
+
+The setup wizard records when the session was created so you can track its age under:
+**Settings → Devices & Services → SmartThings Find → Download Diagnostics**
+
+Community experience suggests sessions last **at least several weeks**, though Samsung does not officially document the expiry. When a session expires, Home Assistant will show a **persistent notification** — clicking it lets you paste a fresh `JSESSIONID` in under a minute, with no reinstall needed.
+
+---
+
+## Active vs. Passive Mode
+
+| Mode | Behaviour | Battery impact |
+|------|-----------|----------------|
+| **Active** | Sends a location update request to the device before fetching | Higher |
+| **Passive** | Fetches the last known location already stored in STF | Lower |
+
+**Defaults:** Active mode is **on** for SmartTags, **off** for all other devices.
+
+You can toggle per device type and adjust the update interval (default: **120 seconds**) under **Settings → Devices & Services → SmartThings Find → Configure**.
+
+---
+
+## Connectivity Notes
+
+Ringing a SmartTag requires a Galaxy phone/tablet nearby to relay the command over Bluetooth. Without a nearby device, the ring request will silently fail — the location will still update if any Galaxy device is in range.
+
+If ringing does not work from Home Assistant, test it on the [SmartThings Find website](https://smartthingsfind.samsung.com/) first. If it does not work there either, it is a network/proximity issue, not an integration bug. Note that the SmartThings **mobile app** uses a different backend than the website — always test on the website.
+
+---
 
 ## Debugging
 
-To enable debug logging, add the following to `configuration.yaml`:
+Add the following to `configuration.yaml` to enable debug logging:
 
 ```yaml
 logger:
@@ -84,31 +113,35 @@ logger:
     custom_components.smartthings_find: debug
 ```
 
-The log will include the session age on every startup, e.g.:
+On each startup, the log will include the current session age:
 ```
 Session age: 12d 3h (authenticated at 2026-02-13 08:51 UTC)
 ```
 
-## License
+---
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## ⚠️ Disclaimer
 
-## Contributions
+- **Unofficial API** — built by reverse-engineering the SmartThings Find web service. It may stop working if Samsung changes their backend.
+- **Limited testing** — if you encounter issues, please [open an issue](https://github.com/mariosemes/HA-SmartThings-Find/issues).
+- This project is not affiliated with or endorsed by Samsung or SmartThings.
 
-Contributions are welcome! Feel free to open issues or submit pull requests to help improve this integration.
-
-## Support
-
-For support, please create an issue on the GitHub repository.
+---
 
 ## Roadmap
 
-- ~~HACS support~~ ✅
-- ~~Allow adding two instances of this integration (two Samsung Accounts)~~ ✅
-- ~~Session age tracking via diagnostics~~ ✅
-- Service to let a device ring
-- Service to make a device stop ringing (for devices that support this feature)
+- [x] HACS support
+- [x] Multiple Samsung accounts (multiple config entries)
+- [x] Session age tracking via diagnostics
+- [ ] Service call to ring a device
+- [ ] Service call to stop ringing (for devices that support it)
 
-## Disclaimer
+---
 
-This is a third-party integration and is not affiliated with or endorsed by Samsung or SmartThings.
+## Contributing
+
+Contributions are welcome — feel free to open issues or submit pull requests. See [CHANGELOG.md](CHANGELOG.md) for recent changes.
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
