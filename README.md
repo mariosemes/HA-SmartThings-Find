@@ -1,10 +1,6 @@
 # SmartThings Find — Home Assistant Integration
 
-<p align="center">
-  <img src="media/screenshot_1.png" alt="SmartThings Find in Home Assistant" width="600"/>
-</p>
-
-<p align="center">
+<p align="left">
   <a href="https://github.com/mariosemes/HA-SmartThings-Find/releases"><img src="https://img.shields.io/badge/version-0.2.3-blue" alt="Version"></a>
   <a href="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml"><img src="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml/badge.svg" alt="HACS Validation"></a>
   <a href="https://github.com/mariosemes/HA-SmartThings-Find/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
