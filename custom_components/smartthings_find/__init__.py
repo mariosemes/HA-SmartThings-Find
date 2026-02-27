@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime, timezone
+import asyncio
 import logging
 import aiohttp
 from homeassistant.core import HomeAssistant
@@ -88,9 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "devices": devices
     })
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -158,15 +157,38 @@ class SmartThingsFindCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Fetch data from SmartThings Find."""
         try:
+            _LOGGER.debug("Updating locations...")
+            results = await asyncio.gather(
+                *(
+                    get_device_location(self.hass, self.session, device['data'], self.config_entry.entry_id)
+                    for device in self.devices
+                ),
+                return_exceptions=True,
+            )
+            # Auth failures must propagate before we do anything else
+            for result in results:
+                if isinstance(result, ConfigEntryAuthFailed):
+                    raise result
             tags = {}
-            _LOGGER.debug(f"Updating locations...")
-            for device in self.devices:
-                dev_data = device['data']
-                tag_data = await get_device_location(self.hass, self.session, dev_data, self.config_entry.entry_id)
-                tags[dev_data['dvceID']] = tag_data
-            _LOGGER.debug(f"Fetched {len(tags)} locations")
+            for device, result in zip(self.devices, results):
+                dev_id = device['data']['dvceID']
+                if isinstance(result, Exception):
+                    # Shouldn't happen after our get_device_location fix, but be safe
+                    _LOGGER.error("Unexpected error fetching '%s': %s", device['data'].get('modelName'), result)
+                    tags[dev_id] = {
+                        "dev_name": device['data'].get('modelName'),
+                        "dev_id": dev_id,
+                        "update_success": False,
+                        "location_found": False,
+                        "used_op": None,
+                        "used_loc": None,
+                        "ops": [],
+                    }
+                else:
+                    tags[dev_id] = result
+            _LOGGER.debug("Fetched %d locations", len(tags))
             return tags
-        except ConfigEntryAuthFailed as err:
+        except ConfigEntryAuthFailed:
             raise
         except Exception as err:
             raise UpdateFailed(f"Error fetching data: {err}")

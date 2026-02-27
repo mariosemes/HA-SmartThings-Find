@@ -31,7 +31,6 @@ class RingButton(ButtonEntity):
         if 'icons' in device['data'] and 'coloredIcon' in device['data']['icons']:
             self._attr_entity_picture = device['data']['icons']['coloredIcon']
         self._attr_icon = 'mdi:nfc-search-variant'
-        # self.hass = hass
         self.device = device['data']
         self._attr_device_info = device['ha_dev_info']
 

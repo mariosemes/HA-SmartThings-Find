@@ -250,21 +250,11 @@ async def get_device_location(hass: HomeAssistant, session: aiohttp.ClientSessio
                                         f"[{dev_name}] Ignoring location older than the previous ({op['oprnType']})")
                                     continue
 
-                                locFound = False
-                                if 'latitude' in op:
-                                    used_loc['latitude'] = float(
-                                        op['latitude'])
-                                    locFound = True
+                                used_loc['latitude'] = float(op['latitude'])
                                 if 'longitude' in op:
                                     used_loc['longitude'] = float(
                                         op['longitude'])
-                                    locFound = True
-
-                                if not locFound:
-                                    _LOGGER.warning(
-                                        f"[{dev_name}] Found no coordinates in operation '{op['oprnType']}'")
-                                else:
-                                    res['location_found'] = True
+                                res['location_found'] = True
 
                                 used_loc['gps_accuracy'] = calc_gps_accuracy(
                                     op.get('horizontalUncertainty'), op.get('verticalUncertainty'))
@@ -344,7 +334,15 @@ async def get_device_location(hass: HomeAssistant, session: aiohttp.ClientSessio
         _LOGGER.error(
             f"[{dev_name}] Exception occurred while fetching location data for tag '{dev_name}': {e}", exc_info=True)
 
-    return None
+    return {
+        "dev_name": dev_name,
+        "dev_id": dev_id,
+        "update_success": False,
+        "location_found": False,
+        "used_op": None,
+        "used_loc": None,
+        "ops": []
+    }
 
 def calc_gps_accuracy(hu: float, vu: float) -> float:
     """
