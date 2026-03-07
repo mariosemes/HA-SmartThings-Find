@@ -75,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # fetch data from STF and update the device_tracker and sensor
     # entities
     update_interval = entry.options.get(CONF_UPDATE_INTERVAL, CONF_UPDATE_INTERVAL_DEFAULT)
-    coordinator = SmartThingsFindCoordinator(hass, session, devices, update_interval)
+    coordinator = SmartThingsFindCoordinator(hass, session, devices, update_interval, entry)
 
     # This is what makes the whole integration slow to load (around 10-15
     # seconds for my 15 devices) but it is the right way to do it. Only if
@@ -142,7 +142,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
 class SmartThingsFindCoordinator(DataUpdateCoordinator):
     """Class to manage fetching SmartThings Find data."""
 
-    def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession, devices, update_interval : int):
+    def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession, devices, update_interval: int, config_entry: ConfigEntry):
         """Initialize the coordinator."""
         self.session = session
         self.devices = devices
@@ -150,6 +150,7 @@ class SmartThingsFindCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=DOMAIN,
             update_interval=timedelta(seconds=update_interval)  # Update interval for all entities
         )
