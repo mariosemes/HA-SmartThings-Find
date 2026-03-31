@@ -1,15 +1,30 @@
 # SmartThings Find — Home Assistant Integration
 
+> ## DEPRECATED — 2026-03-31
+>
+> **This integration is deprecated due to breaking changes in Samsung's Find service.**
+>
+> In early 2026, Samsung completely rebuilt their SmartThings Find / Samsung Find platform. The old backend (`smartthingsfind.samsung.com`) with its long-lived session cookies has been replaced by a new REST API (`api.samsungfind.com`) that uses **JWT tokens with a 1-hour expiry and no refresh mechanism**.
+>
+> This means:
+> - **Authentication expires every hour.** There is no way to automatically renew the token — Samsung deliberately does not provide a refresh token, a silent OAuth flow, or any other renewal mechanism. We investigated every possible approach (SSO cookies, SmartThings API bridge, Samsung Account SDK, OpenID Connect `prompt=none`, headless browser automation) and confirmed that Samsung's architecture makes long-lived sessions impossible.
+> - **Re-authentication requires browser DevTools.** Users must open the Samsung Find website, open DevTools, and copy header values from the Network tab. This is not a reasonable experience for most Home Assistant users.
+> - **Samsung can break this integration at any time.** The API is undocumented and was reverse-engineered from the Samsung Find web application. Samsung has no obligation to maintain compatibility.
+>
+> **The integration still works** — it just requires re-authentication roughly every hour. If you're comfortable with that workflow, you can continue using it. But we cannot recommend it for unattended operation and will not be actively developing new features.
+>
+> If Samsung introduces a proper OAuth2 flow with refresh tokens, or if the SmartThings API adds location data for SmartTags, this deprecation will be reconsidered.
+
 <p align="left">
-  <a href="https://github.com/mariosemes/HA-SmartThings-Find/releases"><img src="https://img.shields.io/badge/version-0.2.3-blue" alt="Version"></a>
+  <a href="https://github.com/mariosemes/HA-SmartThings-Find/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version"></a>
   <a href="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml"><img src="https://github.com/mariosemes/HA-SmartThings-Find/actions/workflows/validate.yaml/badge.svg" alt="HACS Validation"></a>
   <a href="https://github.com/mariosemes/HA-SmartThings-Find/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
   <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange" alt="HACS: Custom"></a>
 </p>
 
-Track and manage your Samsung SmartTags and Samsung devices — phones, tablets, watches, and earbuds — directly from Home Assistant using the [SmartThings Find](https://smartthingsfind.samsung.com/) service.
+Track and manage your Samsung SmartTags and Samsung devices — phones, tablets, watches, and earbuds — directly from Home Assistant using the [Samsung Find](https://samsungfind.samsung.com/) service.
 
-> **🍴 Fork Notice** — This is a maintained fork of the original [Vedeneb/HA-SmartThings-Find](https://github.com/Vedeneb/HA-SmartThings-Find) project, which has been archived by its author. A huge thank you to **Vedeneb** for the original concept, the reverse-engineering work, and the solid foundation this project builds on.
+> **Fork Notice** — This is a maintained fork of the original [Vedeneb/HA-SmartThings-Find](https://github.com/Vedeneb/HA-SmartThings-Find) project, which has been archived by its author.
 
 ---
 
@@ -20,20 +35,14 @@ For each registered Samsung device, the integration creates:
 | Entity | Description |
 |--------|-------------|
 | `device_tracker` | GPS location with accuracy |
-| `sensor` | Battery level *(SmartTags only; not supported for earbuds)* |
+| `sensor` | Battery level |
 | `button` | Remotely ring the device |
-
-**Notes:**
-- Physical button presses on a SmartTag are **not** supported. Other integrations can handle that.
-- Stopping a ring is **not** yet implemented (the SmartThings Find website API has limited support for this).
 
 ---
 
 ## Installation
 
 ### HACS (recommended)
-
-Click the button below to add this repository directly to HACS, or manually add `https://github.com/mariosemes/HA-SmartThings-Find` as a custom integration repository.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mariosemes&repository=HA-SmartThings-Find&category=integration)
 
@@ -51,29 +60,38 @@ Click the button below to add this repository directly to HACS, or manually add 
 
 ## Setup
 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smartthings_find)
-
-Or go to **Settings → Devices & Services → Add Integration** and search for **SmartThings Find** *(do not confuse with the built-in SmartThings integration)*.
+Go to **Settings > Devices & Services > Add Integration** and search for **SmartThings Find**.
 
 **Steps:**
 
-1. Click the login link shown in the setup form — Samsung's login page will open in your browser
-2. Sign in with your Samsung account
-3. Once redirected to SmartThings Find, press **F12** to open DevTools
-4. Go to **Application → Cookies → `https://smartthingsfind.samsung.com`**
-5. Copy the value of the **`JSESSIONID`** cookie and paste it into the setup form
-6. The integration validates the session and completes setup automatically
+1. Open [samsungfind.samsung.com](https://samsungfind.samsung.com/) in your browser and sign in with your Samsung account
+2. Once the map loads with your devices, press **F12** to open DevTools
+3. Go to the **Network** tab
+4. Click on any device on the map (this triggers API requests)
+5. Find any request to `api.samsungfind.com` and click on it
+6. In **Request Headers**, copy these values:
+   - `x-sec-sa-authtoken` — paste into the **Auth Token** field
+   - `x-sec-sa-userid` — paste into the **User ID** field
+   - `x-sec-sa-countrycode` — paste into the **Country Code** field
+7. Click Submit — the integration validates the token and discovers your devices
 
 ---
 
-## Authentication & Session Lifetime
+## Authentication Limitations
 
-The integration uses Samsung's OAuth2 login flow. The `JSESSIONID` cookie is a one-time setup step — no credentials are stored.
+Samsung's new Find API (launched early 2026) uses JWT tokens that **expire after 1 hour** with **no refresh mechanism**. This is a fundamental limitation of Samsung's architecture — not a bug in this integration.
 
-The setup wizard records when the session was created so you can track its age under:
-**Settings → Devices & Services → SmartThings Find → Download Diagnostics**
+When your token expires:
+1. Home Assistant will show a **persistent notification** asking you to re-authenticate
+2. Click the notification to open the re-authentication form
+3. Follow the [Setup](#setup) steps again to paste a fresh token
 
-Community experience suggests sessions last **at least several weeks**, though Samsung does not officially document the expiry. When a session expires, Home Assistant will show a **persistent notification** — clicking it lets you paste a fresh `JSESSIONID` in under a minute, with no reinstall needed.
+We investigated every possible approach to extend token lifetime:
+- Samsung SSO cookies do not enable silent OAuth renewal (Samsung requires interactive login)
+- The SmartThings API does not expose location data for SmartTags
+- SmartThings Personal Access Tokens (PATs) are not accepted by the Find API
+- Samsung's OAuth does not support `prompt=none` (OpenID Connect silent auth)
+- The Samsung Account SDK only exposes `signIn` (no token refresh or silent auth methods)
 
 ---
 
@@ -82,19 +100,25 @@ Community experience suggests sessions last **at least several weeks**, though S
 | Mode | Behaviour | Battery impact |
 |------|-----------|----------------|
 | **Active** | Sends a location update request to the device before fetching | Higher |
-| **Passive** | Fetches the last known location already stored in STF | Lower |
+| **Passive** | Fetches the last known location already stored | Lower |
 
 **Defaults:** Active mode is **on** for SmartTags, **off** for all other devices.
 
-You can toggle per device type and adjust the update interval (default: **120 seconds**) under **Settings → Devices & Services → SmartThings Find → Configure**.
+Configure under **Settings > Devices & Services > SmartThings Find > Configure**.
 
 ---
 
-## Connectivity Notes
+## What Changed in v1.0.0
 
-Ringing a SmartTag requires a Galaxy phone/tablet nearby to relay the command over Bluetooth. Without a nearby device, the ring request will silently fail — the location will still update if any Galaxy device is in range.
+Samsung completely rebuilt their Find service:
 
-If ringing does not work from Home Assistant, test it on the [SmartThings Find website](https://smartthingsfind.samsung.com/) first. If it does not work there either, it is a network/proximity issue, not an integration bug. Note that the SmartThings **mobile app** uses a different backend than the website — always test on the website.
+| | Old (v0.2.x) | New (v1.0.0) |
+|---|---|---|
+| **API** | `smartthingsfind.samsung.com` | `api.samsungfind.com` |
+| **Auth** | JSESSIONID cookie (lasted weeks) | JWT token (expires in 1 hour) |
+| **Endpoints** | `.do` endpoints with CSRF tokens | REST API with JWT headers |
+| **Token refresh** | Not needed (long-lived cookie) | Not possible (no refresh mechanism) |
+| **Setup** | Copy cookie from Application tab | Copy headers from Network tab |
 
 ---
 
@@ -109,34 +133,21 @@ logger:
     custom_components.smartthings_find: debug
 ```
 
-On each startup, the log will include the current session age:
-```
-Session age: 12d 3h (authenticated at 2026-02-13 08:51 UTC)
-```
-
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-- **Unofficial API** — built by reverse-engineering the SmartThings Find web service. It may stop working if Samsung changes their backend.
-- **Limited testing** — if you encounter issues, please [open an issue](https://github.com/mariosemes/HA-SmartThings-Find/issues).
+- **Unofficial API** — built by reverse-engineering the Samsung Find web service. It may stop working if Samsung changes their backend.
+- **1-hour token expiry** — Samsung does not provide a way to refresh tokens automatically. This is unlikely to change unless Samsung opens a public API.
 - This project is not affiliated with or endorsed by Samsung or SmartThings.
-
----
-
-## Roadmap
-
-- [x] HACS support
-- [x] Multiple Samsung accounts (multiple config entries)
-- [x] Session age tracking via diagnostics
-- [ ] Service call to ring a device
-- [ ] Service call to stop ringing (for devices that support it)
 
 ---
 
 ## Contributing
 
 Contributions are welcome — feel free to open issues or submit pull requests. See [CHANGELOG.md](CHANGELOG.md) for recent changes.
+
+If you find a way to extend the token lifetime or discover a Samsung API that supports proper OAuth2 refresh for Find data, please open an issue immediately!
 
 ## License
 

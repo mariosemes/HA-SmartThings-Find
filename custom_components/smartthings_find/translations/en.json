@@ -5,15 +5,18 @@
     },
     "step": {
       "user": {
-        "title": "SmartThings Find - Login",
-        "description": "## Login Steps\n\n1. Click [here]({login_url}) to open the Samsung login page\n2. Sign in with your Samsung account\n3. Once redirected to SmartThings Find, press **F12** to open DevTools\n4. Go to **Application → Cookies → https://smartthingsfind.samsung.com**\n5. Copy the value of the **JSESSIONID** cookie and paste it below",
+        "title": "Samsung Find - Login",
+        "description": "## Setup Steps\n\n1. Open [{login_url}]({login_url}) and sign in with your Samsung account\n2. Once the map loads, press **F12** to open DevTools\n3. Go to the **Network** tab and click on any request to `api.samsungfind.com`\n4. In **Request Headers**, copy the values of:\n   - **x-sec-sa-authtoken** \u2192 paste into *Auth Token*\n   - **x-sec-sa-userid** \u2192 paste into *User ID*\n   - **x-sec-sa-countrycode** \u2192 paste into *Country Code*\n\n\u26a0\ufe0f **Note:** The auth token expires after **1 hour**. When it expires, Home Assistant will show a re-authentication notification. You will need to repeat the steps above to obtain a fresh token.",
         "data": {
-          "jsessionid": "JSESSIONID cookie value"
+          "auth_token": "Auth Token (x-sec-sa-authtoken header value)",
+          "user_id": "User ID (x-sec-sa-userid header value)",
+          "country_code": "Country Code (x-sec-sa-countrycode header value)"
         }
       }
     },
     "error": {
-      "invalid_auth": "The JSESSIONID is invalid or has expired. Please log in again and paste a fresh value.",
+      "invalid_auth": "Authentication failed. The token may be expired or invalid. Please obtain a fresh token.",
+      "invalid_token": "The auth token is not a valid JWT. Please copy the full x-sec-sa-authtoken value.",
       "unknown": "An unexpected error occurred. Check the logs for details."
     }
   },

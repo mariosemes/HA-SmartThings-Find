@@ -1,85 +1,100 @@
+"""Config flow for SmartThings Find integration."""
 from typing import Any
+import logging
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlowResult,
-    OptionsFlowWithConfigEntry
+    OptionsFlowWithConfigEntry,
 )
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
 from .const import (
     DOMAIN,
-    CONF_JSESSIONID,
-    CONF_SESSION_CREATED_AT,
+    CONF_AUTH_TOKEN,
+    CONF_USER_ID,
+    CONF_COUNTRY_CODE,
     CONF_UPDATE_INTERVAL,
     CONF_UPDATE_INTERVAL_DEFAULT,
     CONF_ACTIVE_MODE_SMARTTAGS,
     CONF_ACTIVE_MODE_SMARTTAGS_DEFAULT,
     CONF_ACTIVE_MODE_OTHERS,
-    CONF_ACTIVE_MODE_OTHERS_DEFAULT
+    CONF_ACTIVE_MODE_OTHERS_DEFAULT,
 )
-from .utils import fetch_csrf, get_login_url, create_stf_session
-import logging
-from datetime import datetime, timezone
+from .api import SamsungFindApiClient, decode_jwt_payload, get_login_url
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SmartThingsFindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for SmartThings Find."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     reauth_entry: ConfigEntry | None = None
 
-    async def _validate_jsessionid(self, jsessionid: str) -> bool:
-        """Validate a JSESSIONID by attempting to fetch a CSRF token from STF."""
-        temp_id = f"__config_flow_{self.flow_id}__"
-        if DOMAIN not in self.hass.data:
-            self.hass.data[DOMAIN] = {}
-        self.hass.data[DOMAIN][temp_id] = {}
-        session = create_stf_session(jsessionid)
-        try:
-            await fetch_csrf(self.hass, session, temp_id)
-            return True
-        except ConfigEntryAuthFailed:
-            return False
-        finally:
-            self.hass.data[DOMAIN].pop(temp_id, None)
-            await session.close()
+    async def _validate_credentials(self, auth_token: str, user_id: str, country_code: str) -> bool:
+        """Validate credentials by making a test API call."""
+        session = async_get_clientsession(self.hass)
+        client = SamsungFindApiClient(
+            session=session,
+            auth_token=auth_token,
+            user_id=user_id,
+            country_code=country_code,
+        )
+        return await client.validate()
 
     async def async_step_user(self, user_input=None):
-        """Show login URL and JSESSIONID input form."""
+        """Show login URL and credential input form."""
         errors = {}
         if user_input is not None:
-            jsessionid = user_input[CONF_JSESSIONID].strip()
+            auth_token = user_input[CONF_AUTH_TOKEN].strip()
+            user_id = user_input[CONF_USER_ID].strip()
+            country_code = user_input.get(CONF_COUNTRY_CODE, "US").strip().upper()
+
             try:
-                valid = await self._validate_jsessionid(jsessionid)
-                if valid:
-                    data = {
-                        CONF_JSESSIONID: jsessionid,
-                        CONF_SESSION_CREATED_AT: datetime.now(timezone.utc).isoformat(),
-                    }
-                    if self.reauth_entry:
-                        return self.async_update_reload_and_abort(
-                            self.reauth_entry,
-                            data=data
-                        )
-                    return self.async_create_entry(title="SmartThings Find", data=data)
-                else:
-                    errors["base"] = "invalid_auth"
-            except Exception as e:
-                _LOGGER.error(f"Unexpected error during login: {e}", exc_info=True)
-                errors["base"] = "unknown"
+                payload = decode_jwt_payload(auth_token)
+                if "exp" not in payload:
+                    errors["base"] = "invalid_token"
+            except ValueError:
+                errors["base"] = "invalid_token"
+
+            if not errors:
+                try:
+                    valid = await self._validate_credentials(auth_token, user_id, country_code)
+                    if valid:
+                        data = {
+                            CONF_AUTH_TOKEN: auth_token,
+                            CONF_USER_ID: user_id,
+                            CONF_COUNTRY_CODE: country_code,
+                        }
+                        if self.reauth_entry:
+                            return self.async_update_reload_and_abort(
+                                self.reauth_entry,
+                                data=data,
+                            )
+                        return self.async_create_entry(title="Samsung Find", data=data)
+                    else:
+                        errors["base"] = "invalid_auth"
+                except Exception as e:
+                    _LOGGER.error("Unexpected error during validation: %s", e, exc_info=True)
+                    errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_JSESSIONID): str
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_AUTH_TOKEN): str,
+                    vol.Required(CONF_USER_ID): str,
+                    vol.Optional(CONF_COUNTRY_CODE, default="US"): str,
+                }
+            ),
             description_placeholders={"login_url": get_login_url()},
-            errors=errors
+            errors=errors,
         )
 
     async def async_step_reauth(self, user_input=None):
@@ -113,13 +128,8 @@ class SmartThingsFindOptionsFlowHandler(OptionsFlowWithConfigEntry):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle options flow."""
-
         if user_input is not None:
-
             res = self.async_create_entry(title="", data=user_input)
-
-            # Reload the integration entry to make sure the newly set options take effect
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
             return res
 

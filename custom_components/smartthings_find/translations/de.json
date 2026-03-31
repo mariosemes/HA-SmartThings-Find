@@ -5,16 +5,19 @@
     },
     "step": {
       "user": {
-        "title": "SmartThings Find - Anmeldung",
-        "description": "## Anmeldeschritte\n\n1. Klicke [hier]({login_url}), um die Samsung-Anmeldeseite zu öffnen\n2. Melde dich mit deinem Samsung-Konto an\n3. Sobald du zu SmartThings Find weitergeleitet wirst, drücke **F12** um die Entwicklertools zu öffnen\n4. Gehe zu **Anwendung → Cookies → https://smartthingsfind.samsung.com**\n5. Kopiere den Wert des **JSESSIONID**-Cookies und füge ihn unten ein",
+        "title": "Samsung Find - Anmeldung",
+        "description": "## Einrichtung\n\n1. \u00d6ffne [{login_url}]({login_url}) und melde dich mit deinem Samsung-Konto an\n2. Sobald die Karte geladen ist, dr\u00fccke **F12** um die Entwicklertools zu \u00f6ffnen\n3. Gehe zum **Netzwerk**-Tab und klicke auf eine Anfrage an `api.samsungfind.com`\n4. Kopiere unter **Anfrage-Header** die Werte von:\n   - **x-sec-sa-authtoken** \u2192 in *Auth Token* einf\u00fcgen\n   - **x-sec-sa-userid** \u2192 in *Benutzer-ID* einf\u00fcgen\n   - **x-sec-sa-countrycode** \u2192 in *L\u00e4ndercode* einf\u00fcgen\n\n\u26a0\ufe0f **Hinweis:** Der Auth Token l\u00e4uft nach **1 Stunde** ab. Wenn er abl\u00e4uft, zeigt Home Assistant eine Benachrichtigung zur erneuten Authentifizierung. Die obigen Schritte m\u00fcssen dann wiederholt werden.",
         "data": {
-          "jsessionid": "JSESSIONID Cookie-Wert"
+          "auth_token": "Auth Token (x-sec-sa-authtoken Header-Wert)",
+          "user_id": "Benutzer-ID (x-sec-sa-userid Header-Wert)",
+          "country_code": "L\u00e4ndercode (x-sec-sa-countrycode Header-Wert)"
         }
       }
     },
     "error": {
-      "invalid_auth": "Die JSESSIONID ist ungültig oder abgelaufen. Bitte melde dich erneut an und füge einen neuen Wert ein.",
-      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Prüfe die Logs für Details."
+      "invalid_auth": "Authentifizierung fehlgeschlagen. Der Token ist m\u00f6glicherweise abgelaufen. Bitte einen neuen Token abrufen.",
+      "invalid_token": "Der Auth Token ist kein g\u00fcltiger JWT. Bitte den vollst\u00e4ndigen x-sec-sa-authtoken-Wert kopieren.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Pr\u00fcfe die Logs f\u00fcr Details."
     }
   },
   "options": {
@@ -22,8 +25,8 @@
       "init": {
         "data": {
           "update_interval": "Aktualisierungsintervall (in Sekunden)",
-          "active_mode_smarttags": "Aktiven Modus für SmartTags verwenden. Könnte Batterienutzung erhöhen",
-          "active_mode_others": "Aktiven Modus für andere Geräte (Handys, Uhren, ...) verwenden. Deutlich erhöhter Akkuverbrauch!"
+          "active_mode_smarttags": "Aktiven Modus f\u00fcr SmartTags verwenden. K\u00f6nnte Batterienutzung erh\u00f6hen.",
+          "active_mode_others": "Aktiven Modus f\u00fcr andere Ger\u00e4te (Handys, Uhren, ...) verwenden. Deutlich erh\u00f6hter Akkuverbrauch!"
         }
       }
     }
